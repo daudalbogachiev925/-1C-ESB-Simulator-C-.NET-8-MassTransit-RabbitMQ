@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>Esb.Core</RootNamespace>
+    <AssemblyName>Esb.Core</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="MassTransit" Version="8.2.3" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="8.0.1" />
+  </ItemGroup>
+
+</Project>
