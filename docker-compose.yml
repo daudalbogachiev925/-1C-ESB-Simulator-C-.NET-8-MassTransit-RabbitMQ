@@ -1,0 +1,98 @@
+version: '3.9'
+
+services:
+  rabbitmq:
+    image: rabbitmq:3.13-management-alpine
+    container_name: esb-rabbitmq
+    ports:
+      - "5672:5672"      # AMQP
+      - "15672:15672"    # Management UI
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: esb-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: esb
+      POSTGRES_PASSWORD: esb
+      POSTGRES_DB: esb_sagas
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U esb"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  esb-api:
+    build:
+      context: .
+      dockerfile: src/Esb.Api/Dockerfile
+    container_name: esb-api
+    ports:
+      - "8080:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - RabbitMQ__Host=rabbitmq
+      - ConnectionStrings__SagaDb=Host=postgres;Database=esb_sagas;Username=esb;Password=esb
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+
+  esb-router:
+    build:
+      context: .
+      dockerfile: src/Esb.Router/Dockerfile
+    container_name: esb-router
+    environment:
+      - RabbitMQ__Host=rabbitmq
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+
+  esb-erp:
+    build:
+      context: .
+      dockerfile: src/Esb.Services.Erp/Dockerfile
+    container_name: esb-erp
+    environment:
+      - RabbitMQ__Host=rabbitmq
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+
+  esb-zup:
+    build:
+      context: .
+      dockerfile: src/Esb.Services.Zup/Dockerfile
+    container_name: esb-zup
+    environment:
+      - RabbitMQ__Host=rabbitmq
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+
+  esb-ut:
+    build:
+      context: .
+      dockerfile: src/Esb.Services.Ut/Dockerfile
+    container_name: esb-ut
+    environment:
+      - RabbitMQ__Host=rabbitmq
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+
+volumes:
+  pgdata:
